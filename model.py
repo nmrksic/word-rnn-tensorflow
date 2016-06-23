@@ -1,6 +1,4 @@
 import tensorflow as tf
-from tensorflow.models.rnn import rnn_cell
-from tensorflow.models.rnn import seq2seq
 
 import numpy as np
 
@@ -12,17 +10,19 @@ class Model():
             args.seq_length = 1
 
         if args.model == 'rnn':
-            cell_fn = rnn_cell.BasicRNNCell
+            cell_fn = tf.nn.rnn_cell.BasicRNNCell
         elif args.model == 'gru':
-            cell_fn = rnn_cell.GRUCell
+            cell_fn = tf.nn.rnn_cell.GRUCell
         elif args.model == 'lstm':
-            cell_fn = rnn_cell.BasicLSTMCell
+            cell_fn = tf.nn.rnn_cell.BasicLSTMCell
         else:
             raise Exception("model type not supported: {}".format(args.model))
 
-        cell = cell_fn(args.rnn_size)
+        cell = cell_fn(args.rnn_size)  
 
-        self.cell = cell = rnn_cell.MultiRNNCell([cell] * args.num_layers)
+        # cell = tf.nn.rnn_cell.DropoutWrapper(cell, self.keep_prob)
+
+        self.cell = cell = tf.nn.rnn_cell.MultiRNNCell([cell] * args.num_layers)
 
         self.input_data = tf.placeholder(tf.int32, [args.batch_size, args.seq_length])
         self.targets = tf.placeholder(tf.int32, [args.batch_size, args.seq_length])
@@ -41,11 +41,11 @@ class Model():
             prev_symbol = tf.stop_gradient(tf.argmax(prev, 1))
             return tf.nn.embedding_lookup(embedding, prev_symbol)
 
-        outputs, last_state = seq2seq.rnn_decoder(inputs, self.initial_state, cell, loop_function=loop if infer else None, scope='rnnlm')
+        outputs, last_state = tf.nn.seq2seq.rnn_decoder(inputs, self.initial_state, cell, loop_function=loop if infer else None, scope='rnnlm')
         output = tf.reshape(tf.concat(1, outputs), [-1, args.rnn_size])
         self.logits = tf.matmul(output, softmax_w) + softmax_b
         self.probs = tf.nn.softmax(self.logits)
-        loss = seq2seq.sequence_loss_by_example([self.logits],
+        loss = tf.nn.seq2seq.sequence_loss_by_example([self.logits],
                 [tf.reshape(self.targets, [-1])],
                 [tf.ones([args.batch_size * args.seq_length])],
                 args.vocab_size)
@@ -60,10 +60,9 @@ class Model():
 
     def sample(self, sess, words, vocab, num=200, prime='first all', sampling_type=1):
         state = self.cell.zero_state(1, tf.float32).eval()
-        prime = vocab.keys()[2]
-        print prime
+        #prime = vocab.keys()[2]
+        
         for word in [prime]:
-            print (word)
             x = np.zeros((1, 1))
             x[0, 0] = vocab[word]
             feed = {self.input_data: x, self.initial_state:state}

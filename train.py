@@ -28,7 +28,7 @@ def main():
                        help='RNN sequence length')
     parser.add_argument('--num_epochs', type=int, default=50,
                        help='number of epochs')
-    parser.add_argument('--save_every', type=int, default=1000,
+    parser.add_argument('--save_every', type=int, default=50,
                        help='save frequency')
     parser.add_argument('--grad_clip', type=float, default=5.,
                        help='clip gradients at this value')
@@ -46,6 +46,7 @@ def main():
                         """)
     args = parser.parse_args()
     train(args)
+
 
 def train(args):
     data_loader = TextLoader(args.data_dir, args.batch_size, args.seq_length)
@@ -105,6 +106,9 @@ def train(args):
                         or (e==args.num_epochs-1 and b == data_loader.num_batches-1): # save for the last result
                     checkpoint_path = os.path.join(args.save_dir, 'model.ckpt')
                     saver.save(sess, checkpoint_path, global_step = e * data_loader.num_batches + b)
+
+                    os.system("python sample.py")
+
                     print("model saved to {}".format(checkpoint_path))
 
 if __name__ == '__main__':
